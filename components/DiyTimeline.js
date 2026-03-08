@@ -40,4 +40,4 @@ const DiyTimeline = ({ diySteps, videoId, formatTime, onDeleteDiyStep }) => {
     );
 };
 
-export default DiyTimeline;
+export default React.memo(DiyTimeline);

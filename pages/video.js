@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Head from "next/head";
 import YouTube from "react-youtube";
+import { getSessionId } from "../lib/supabase";
 import {
   Button,
   TextField,
@@ -13,28 +15,12 @@ import {
   Paper,
   IconButton,
   Snackbar,
-  Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  List,
-  ListItem,
-  ListItemAvatar,
-  Avatar,
-  ListItemText,
-  CircularProgress,
-  InputAdornment,
   ToggleButton,
   ToggleButtonGroup,
 } from "@mui/material";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import DeleteIcon from "@mui/icons-material/Delete";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import SaveIcon from "@mui/icons-material/Save";
 import StorageIcon from "@mui/icons-material/Storage";
-import ThumbUpIcon from "@mui/icons-material/ThumbUp";
-import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import SearchIcon from "@mui/icons-material/Search";
 import SearchDialog from "../components/SearchDialog";
 import AdTimeline from "../components/AdTimeline";
@@ -60,7 +46,6 @@ const VideoPlayer = () => {
 
   const [player, setPlayer] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [ads, setAds] = useState([]);
 
   // DIY Editor State
@@ -105,6 +90,14 @@ const VideoPlayer = () => {
   const [activeCaption, setActiveCaption] = useState("");
   const recognitionRef = useRef(null);
   const manualLoopBreakRef = useRef(null);
+
+  // Refs to avoid stale closures in the setInterval-based sync engine
+  const appModeRef = useRef(appMode);
+  const diyStepsRef = useRef(diySteps);
+  const tbmaBlocksRef = useRef(tbmaBlocks);
+  useEffect(() => { appModeRef.current = appMode; }, [appMode]);
+  useEffect(() => { diyStepsRef.current = diySteps; }, [diySteps]);
+  useEffect(() => { tbmaBlocksRef.current = tbmaBlocks; }, [tbmaBlocks]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -186,7 +179,10 @@ const VideoPlayer = () => {
             recognition.start();
           } catch (e) {}
         }
-      } else if (appMode === "ad_editor" && recognitionRef.current) {
+      } else if (
+        (appMode === "ad_editor" || appMode === "tbma_editor") &&
+        recognitionRef.current
+      ) {
         try {
           recognitionRef.current.stop();
         } catch (e) {}
@@ -277,10 +273,14 @@ const VideoPlayer = () => {
         const time = player.getCurrentTime();
         setCurrentTime(time);
 
+        const currentAppMode = appModeRef.current;
+        const currentDiySteps = diyStepsRef.current;
+        const currentTbmaBlocks = tbmaBlocksRef.current;
+
         // DIY Looping Logic: If we hit the End Time of a step, loop back to the Start Time
         // Note: Only enforce DIY loops if we aren't in AD Editor specifically
-        if (appMode !== "ad_editor") {
-          const activeStep = diySteps.find(
+        if (currentAppMode !== "ad_editor") {
+          const activeStep = currentDiySteps.find(
             (step) =>
               step.videoId === videoId &&
               time >= step.endTime &&
@@ -303,8 +303,8 @@ const VideoPlayer = () => {
 
         // Merge standard ADs with TBMA action blocks if they exist for this video
         const activeTbmaActions =
-          appMode === "tbma_editor" || appMode === "player"
-            ? tbmaBlocks.filter(
+          currentAppMode === "tbma_editor" || currentAppMode === "player"
+            ? currentTbmaBlocks.filter(
                 (b) => b.type === "action" && b.text.trim() !== "",
               )
             : [];
@@ -342,7 +342,7 @@ const VideoPlayer = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, player, ads, synth, videoId]); // appMode, diySteps, tbmaBlocks, playAd intentionally omitted to avoid engine restart on authoring edits
+  }, [isPlaying, player, ads, synth, videoId]); // appMode, diySteps, tbmaBlocks accessed via refs to avoid engine restart
 
   const playAd = (ad) => {
     if (!synth) return;
@@ -443,6 +443,7 @@ const VideoPlayer = () => {
         `/api/search?q=${encodeURIComponent(searchQuery)}`,
       );
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Search failed");
       setSearchResults(data);
     } catch (err) {
       console.error(err);
@@ -478,14 +479,79 @@ const VideoPlayer = () => {
     setToastMessage("Successfully Saved Data to Local Browser Storage!");
   };
 
-  const handleSaveToDB = () => {
-    // Simulated DB call — placeholder only, no real persistence
-    setTimeout(() => {
+  const handleSaveToDB = async () => {
+    if (!videoMetadata) {
+      setToastMessage("Load a video first before saving to database.");
+      return;
+    }
+
+    const sessionId = getSessionId();
+    const video = {
+      id: videoId,
+      title: videoMetadata.title || '',
+      author: videoMetadata.author || '',
+    };
+
+    try {
+      const promises = [];
+
+      // Save ADs for this video
+      const currentVideoAds = ads.filter((ad) => ad.videoId === videoId);
+      if (currentVideoAds.length > 0) {
+        promises.push(
+          fetch('/api/db/save-ads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video, ads: currentVideoAds, authorId: sessionId }),
+          })
+        );
+      }
+
+      // Save DIY steps for this video
+      const currentDiySteps = diySteps.filter((s) => s.videoId === videoId);
+      if (currentDiySteps.length > 0) {
+        promises.push(
+          fetch('/api/db/save-diy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video, steps: currentDiySteps, authorId: sessionId }),
+          })
+        );
+      }
+
+      // Save TBMA blocks if any exist
+      if (tbmaBlocks.length > 0) {
+        promises.push(
+          fetch('/api/db/save-tbma', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video, blocks: tbmaBlocks, authorId: sessionId }),
+          })
+        );
+      }
+
+      if (promises.length === 0) {
+        setToastMessage("No data to save for this video.");
+        return;
+      }
+
+      const results = await Promise.all(promises);
+      const allOk = results.every((r) => r.ok);
+
+      if (!allOk) {
+        throw new Error("One or more saves failed");
+      }
+
       setHasUnsavedChanges(false);
+      setToastMessage("✅ Successfully saved to database!");
+    } catch (error) {
+      console.error('DB save error:', error);
+      // Graceful fallback: save locally instead
+      handleSaveLocally();
       setToastMessage(
-        "(Demo) Simulated Save to Database Complete! Implement a real backend to persist data.",
+        "⚠️ Database unavailable — saved to local browser storage instead.",
       );
-    }, 500);
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -497,15 +563,21 @@ const VideoPlayer = () => {
       try {
         const importedAds = JSON.parse(event.target.result);
         if (Array.isArray(importedAds)) {
-          // Filter matching ADs from the imported list for this video to prevent dupes mostly
-          // Or ask user if they want to merge. Simple merge for now:
-          const mergedAds = [...ads, ...importedAds].sort(
+          // Validate imported ADs have the minimum required fields
+          const validAds = importedAds.filter(
+            (ad) => ad.time != null && ad.text && ad.mode,
+          );
+          if (validAds.length === 0) {
+            alert("No valid audio descriptions found in the file.");
+            return;
+          }
+          const mergedAds = [...ads, ...validAds].sort(
             (a, b) => a.time - b.time,
           );
           setAds(mergedAds);
-          setHasUnsavedChanges(true); // Must manually save them after import
+          setHasUnsavedChanges(true);
           setToastMessage(
-            `Successfully imported ${importedAds.length} descriptions! Please review and save.`,
+            `Successfully imported ${validAds.length} descriptions! Please review and save.`,
           );
         }
       } catch (err) {
@@ -518,7 +590,6 @@ const VideoPlayer = () => {
 
   const onReady = (event) => {
     setPlayer(event.target);
-    setDuration(event.target.getDuration());
 
     // Extract metadata
     const data = event.target.getVideoData();
@@ -565,7 +636,7 @@ const VideoPlayer = () => {
       playedAdsRef.current = new Set(
         [...playedAdsRef.current].filter((id) => {
           const ad = [...ads, ...tbmaBlocks].find((a) => a.id === id);
-          return ad && ad.time >= time;
+          return ad && ad.time < time;
         }),
       );
     }
@@ -638,8 +709,8 @@ const VideoPlayer = () => {
     setHasUnsavedChanges(true);
   };
 
-  const handleVoteProcess = (id, direction) => {
-    // Mock voting system locally - in a real DB this would ping a server
+  const handleVoteProcess = async (id, direction) => {
+    // Optimistic local update
     const updatedAds = ads.map((ad) => {
       if (ad.id === id) {
         return {
@@ -649,9 +720,32 @@ const VideoPlayer = () => {
       }
       return ad;
     });
-    // Optionally resort by time if needed, but they should still be sorted
     setAds(updatedAds);
     setHasUnsavedChanges(true);
+
+    // Persist vote to database (fire-and-forget with error handling)
+    try {
+      const sessionId = getSessionId();
+      const res = await fetch('/api/db/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adId: id,
+          voterId: sessionId,
+          direction: direction === 'up' ? 1 : -1,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Sync the server-authoritative vote count back
+        setAds((prev) =>
+          prev.map((ad) => (ad.id === id ? { ...ad, votes: data.votes } : ad))
+        );
+      }
+    } catch (err) {
+      // Vote already applied optimistically, silent fail is fine
+      console.warn('Vote sync failed:', err);
+    }
   };
 
   const formatTime = (totalSeconds) => {
@@ -679,6 +773,13 @@ const VideoPlayer = () => {
 
   return (
     <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
+      <Head>
+        <title>PhaseThru — Audio Description Player</title>
+        <meta
+          name="description"
+          content="Author, share, and playback audio descriptions for YouTube videos. Includes DIY looping, TBMA scripting, and voice control."
+        />
+      </Head>
       <Typography variant="h4" gutterBottom>
         Audio Description Player
       </Typography>
@@ -847,7 +948,7 @@ const VideoPlayer = () => {
                 />
                 <Button
                   variant="outlined"
-                  color="default"
+                  color="inherit"
                   size="small"
                   startIcon={<CloudUploadIcon />}
                   onClick={() => fileUploadRef.current.click()}
@@ -1153,8 +1254,6 @@ const VideoPlayer = () => {
       {appMode === "tbma_editor" && (
         <TbmaEditor
           videoId={videoId}
-          player={player}
-          currentTime={currentTime}
           tbmaBlocks={tbmaBlocks}
           setTbmaBlocks={setTbmaBlocks}
           voices={voices}

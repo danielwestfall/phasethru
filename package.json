@@ -15,6 +15,7 @@
     "@mui/lab": "^5.0.0-alpha.173",
     "@mui/material": "^5.16.7",
     "@playzone/youtube-transcript": "^1.0.0",
+    "@supabase/supabase-js": "^2.98.0",
     "next": "^14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

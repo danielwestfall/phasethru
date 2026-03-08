@@ -18,7 +18,7 @@ const AdTimeline = ({
         <div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px', marginBottom: '15px' }}>
                 <Typography variant="h5" style={{ flexGrow: 1 }}>
-                     Saved Descriptions ({currentVideoAds.length}) {hasUnsavedChanges && <span style={{ color: '#ff9800', fontSize: '0.6em', verticalAlign: 'middle' }}>(Unsaved Edits)</span>}
+                     Saved Descriptions ({currentVideoAds.length}) {hasUnsavedChanges && <span style={{ color: '#e65100', fontSize: '0.6em', verticalAlign: 'middle' }}>(Unsaved Edits)</span>}
                 </Typography>
                 <Button 
                     variant="contained" 
@@ -77,4 +77,4 @@ const AdTimeline = ({
     );
 };
 
-export default AdTimeline;
+export default React.memo(AdTimeline);

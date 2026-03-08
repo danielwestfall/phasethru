@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
     Dialog, DialogTitle, DialogContent, DialogActions, 
-    TextField, Button, CircularProgress, List, ListItem, 
+    TextField, Button, CircularProgress, List, ListItemButton, 
     ListItemAvatar, Avatar, ListItemText, Typography 
 } from "@mui/material";
 
@@ -44,7 +44,7 @@ const SearchDialog = ({
 
                 <List>
                     {searchResults.map((result) => (
-                        <ListItem button key={result.id} onClick={() => onSelectResult(result)}>
+                        <ListItemButton key={result.id} onClick={() => onSelectResult(result)}>
                             <ListItemAvatar>
                                 <Avatar variant="square" src={result.thumbnail} style={{ width: 120, height: 68, marginRight: 15 }} />
                             </ListItemAvatar>
@@ -52,7 +52,7 @@ const SearchDialog = ({
                                 primary={result.title} 
                                 secondary={`${result.channel} • ${result.views} views • ${result.duration}`} 
                             />
-                        </ListItem>
+                        </ListItemButton>
                     ))}
                     {searchResults.length === 0 && !isSearching && searchQuery && (
                         <Typography color="textSecondary" align="center">No results found.</Typography>
@@ -68,4 +68,4 @@ const SearchDialog = ({
     );
 };
 
-export default SearchDialog;
+export default React.memo(SearchDialog);

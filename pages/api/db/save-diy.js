@@ -1,0 +1,53 @@
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!isSupabaseConfigured()) {
+    return res.status(503).json({ error: 'Database not configured' });
+  }
+
+  const { video, steps, authorId } = req.body;
+
+  if (!video?.id || !Array.isArray(steps)) {
+    return res.status(400).json({ error: 'Missing video or steps data' });
+  }
+
+  try {
+    // Upsert video record
+    const { error: videoError } = await supabase
+      .from('videos')
+      .upsert({
+        id: video.id,
+        title: video.title || '',
+        author: video.author || '',
+      }, { onConflict: 'id' });
+
+    if (videoError) throw videoError;
+
+    // Insert DIY steps
+    const rows = steps.map((step) => ({
+      video_id: video.id,
+      start_time: step.startTime,
+      end_time: step.endTime,
+      text: step.text || '',
+      voice: step.voice || null,
+      rate: step.rate || 1.0,
+      author_id: authorId || 'anonymous',
+    }));
+
+    const { data, error: stepsError } = await supabase
+      .from('diy_steps')
+      .insert(rows)
+      .select();
+
+    if (stepsError) throw stepsError;
+
+    res.status(200).json({ saved: data.length });
+  } catch (error) {
+    console.error('Save DIY error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save' });
+  }
+}

@@ -19,8 +19,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 const TbmaEditor = ({
   videoId,
-  player,
-  currentTime,
   tbmaBlocks,
   setTbmaBlocks,
   voices,
@@ -396,4 +394,4 @@ const TbmaEditor = ({
   );
 };
 
-export default TbmaEditor;
+export default React.memo(TbmaEditor);
