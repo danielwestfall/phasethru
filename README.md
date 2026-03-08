@@ -1,34 +1,79 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# PhaseThru ✨
+A revolutionary, accessible web-based Video Player built for Authoring Audio Descriptions (AD), structuring interactive DIY Guides, and providing a streamlined hands-free voice-controlled Player experience.
 
-## Getting Started
+Built on React, Next.js, and the YouTube IFrame API. 
 
-First, run the development server:
+## 🎯 Project Philosophy
+PhaseThru aims to bridge the gap in media accessibility and interactive learning by empowering creators and users to inject custom audio contexts into existing YouTube videos without needing complex video editing software. Whether you are generating WCAG-compliant Audio Descriptions for the visually impaired or breaking down complex DIY videos into loopable, voice-controllable segments, PhaseThru provides the tools in one unified interface.
 
-```bash
-npm run dev
-# or
-yarn dev
-```
+## ✨ Core Features
+PhaseThru operates in several distinct Application Modes, toggleable via the main interface:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 1. 🎙️ Audio Description (AD) Editor Mode
+- **Author Descriptions**: Pause the video at any timestamp and author a custom string of text.
+- **Text-To-Speech Integration**: Utilizing the native Web Speech API, PhaseThru will automatically read your descriptions at the designated timestamps.
+- **Customizable Voices & Speed**: Select from diverse system voices and adjust the reading rate per AD.
+- **Playback Sync Engine**: Choose whether the video should **Pause** entirely while the TTS reads the AD, or **Duck** (lower volume) to let the audio mix in real-time.
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+### 2. 🛠️ DIY Mode Map
+- **Segment Looping**: Define explicit "Steps" for a project (e.g., Step 1: 00:30 - 01:15). 
+- **Auto-Looping**: The video will naturally loop within this timeframe until you are ready to move on.
+- **Contextual Aids**: Add optional ADs that play continuously during the loop to clarify visual instructions that the creator missed.
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+### 3. ▶️ Player Mode
+- **Immersive Viewing**: A clean, full-width UI focused entirely on the content.
+- **Closed Caption Overlay**: While TTS is speaking an AD, the text is displayed over the video in a high-contrast CC format.
+- **Hands-Free Voice Control**: Designed for users who have their hands tied (e.g., during woodworking or cooking). Simply utilize Voice Commands:
+  - `"Play"` / `"Start"`
+  - `"Pause"` / `"Stop"`
+  - `"Next Step"` / `"Continue"`: Automatically breaks the current DIY Loop and advances the playback.
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+### 4. 🔍 YouTube Search Integration & Fallbacks
+- Easily load videos via URL or Video ID.
+- Advanced Error Handling catches videos that restrict embedding (Error 150/101) and automatically searches YouTube via an API backend to provide clickable, alternative variations of that exact video.
 
-## Learn More
+## 🚀 Quickstart Guide
+To run PhaseThru locally in your development environment:
 
-To learn more about Next.js, take a look at the following resources:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/danielwestfall/phasethru.git
+   cd phasethru
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Install Dependencies:**
+   Ensure you have Node.js installed.
+   ```bash
+   npm install
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+3. **Start the Development Server:**
+   ```bash
+   npm run dev
+   ```
+   *Note: If traversing a local environment with proxy errors, try running `$env:NODE_OPTIONS="--openssl-legacy-provider"; npm run dev`.*
 
-## Deploy on Vercel
+4. **Open Application**: 
+   Navigate to `http://localhost:3000` or `http://localhost:3000/video`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🏗️ Architecture & Contributing
+This project uses **Next.js** within the `/pages` directory structure. Open-source contributions are highly welcome!
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### Core Technologies
+- `react-youtube`: Manages the YouTube IFrame API.
+- `@material-ui/core` & `@material-ui/icons`: Provides the accessible, responsive UI framework.
+- `window.speechSynthesis` / `window.SpeechRecognition`: Core native APIs powering TTS and Voice Control.
+
+### File Structure
+- `pages/video.js`: The central container orchestrating state across the entire application (App Mode selection, Video Player state, Sync Engine).
+- `components/`: Modular, extracted UI components for maintainability limit technical debt.
+  - `AdTimeline.js`: Manages the local persistence rendering of Saved ADs.
+  - `DiyTimeline.js`: Manages the map of DIY steps.
+  - `SearchDialog.js`: Handles YouTube proxy querying.
+- `pages/api/search.js`: A backend Express-style route hooking into `youtube-sr` to bypass CORS for client-side queries.
+
+### Accessibility (WCAG 2.2 AA)
+We strive to maintain high accessibility standards. The application includes strict ARIA labels for screen readers and adheres to AA contrast ratios (4.5:1) for warnings/unsaved state indicators.
+
+---
+*Created by [danielwestfall]*
