@@ -3,7 +3,7 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions, 
     TextField, Button, CircularProgress, List, ListItem, 
     ListItemAvatar, Avatar, ListItemText, Typography 
-} from "@material-ui/core";
+} from "@mui/material";
 
 const SearchDialog = ({ 
     open, 
@@ -28,7 +28,7 @@ const SearchDialog = ({
                         fullWidth
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && onSearch()}
+                        onKeyDown={(e) => e.key === 'Enter' && onSearch()}
                         style={{ marginRight: '15px' }}
                         inputProps={{ 'aria-label': 'Search YouTube keywords' }}
                     />

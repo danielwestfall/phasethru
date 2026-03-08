@@ -1,9 +1,9 @@
 import React from 'react';
-import { Typography, Button, Grid, Paper, IconButton } from "@material-ui/core";
-import PlayArrowIcon from '@material-ui/icons/PlayArrow';
-import DeleteIcon from '@material-ui/icons/Delete';
-import ThumbUpIcon from '@material-ui/icons/ThumbUp';
-import ThumbDownIcon from '@material-ui/icons/ThumbDown';
+import { Typography, Button, Grid, Paper, IconButton } from "@mui/material";
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 
 const AdTimeline = ({ 
     currentVideoAds, 

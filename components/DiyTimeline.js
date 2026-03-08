@@ -1,21 +1,22 @@
 import React from 'react';
-import { Typography, Grid, Paper, IconButton } from "@material-ui/core";
-import DeleteIcon from '@material-ui/icons/Delete';
+import { Typography, Grid, Paper, IconButton } from "@mui/material";
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const DiyTimeline = ({ diySteps, videoId, formatTime, onDeleteDiyStep }) => {
+    const videoSteps = diySteps.filter(s => s.videoId === videoId);
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px', marginBottom: '15px' }}>
                 <Typography variant="h5" style={{ flexGrow: 1 }}>
-                     Saved DIY Steps ({diySteps.filter(s => s.videoId === videoId).length})
+                     Saved DIY Steps ({videoSteps.length})
                 </Typography>
             </div>
             
-            {diySteps.filter(s => s.videoId === videoId).length === 0 ? (
+            {videoSteps.length === 0 ? (
                 <Typography color="textSecondary">No DIY steps added for this video yet.</Typography>
             ) : (
                 <Grid container spacing={2}>
-                    {diySteps.filter(s => s.videoId === videoId).map((step, index) => (
+                    {videoSteps.map((step, index) => (
                         <Grid item xs={12} key={step.id}>
                             <Paper style={{ padding: '15px', display: 'flex', alignItems: 'center' }}>
                                 

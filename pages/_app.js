@@ -1,5 +1,5 @@
 import "../styles/globals.css";
-import CssBaseline from "@material-ui/core/CssBaseline";
+import CssBaseline from "@mui/material/CssBaseline";
 
 function MyApp({ Component, pageProps }) {
   return (

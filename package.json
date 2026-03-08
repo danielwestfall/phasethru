@@ -9,21 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@danielxceron/youtube-transcript": "^1.2.6",
-    "@fontsource/roboto": "^4.5.0",
-    "@material-ui/core": "^4.12.3",
-    "@material-ui/icons": "^4.11.2",
-    "@material-ui/lab": "^4.0.0-alpha.61",
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/lab": "^5.0.0-alpha.173",
+    "@mui/material": "^5.16.7",
     "@playzone/youtube-transcript": "^1.0.0",
-    "next": "11.1.2",
-    "react": "17.0.2",
-    "react-dom": "17.0.2",
-    "react-youtube": "^7.13.1",
-    "youtube-sr": "^4.3.12",
-    "youtube-transcript": "^1.2.1"
+    "next": "^14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-youtube": "^10.1.0",
+    "youtube-sr": "^4.3.12"
   },
   "devDependencies": {
-    "eslint": "7.32.0",
-    "eslint-config-next": "11.1.2"
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.18"
   }
 }
