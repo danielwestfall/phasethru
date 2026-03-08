@@ -70,7 +70,7 @@ const TbmaEditor = ({
           blocks.push({
             ...currentBlock,
             text: currentBlock.text.trim(),
-            id: Date.now() + Math.random(),
+            id: crypto.randomUUID(),
           });
           currentBlock = null;
         }
@@ -84,21 +84,23 @@ const TbmaEditor = ({
     setImportError("");
     try {
       const res = await fetch(`/api/captions?videoId=${videoId}`);
-      
+
       let data;
       const contentType = res.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         data = await res.json();
       } else {
         const text = await res.text();
-        throw new Error(`Server returned a non-JSON error (Status ${res.status}): ${text.substring(0, 50)}...`);
+        throw new Error(
+          `Server returned a non-JSON error (Status ${res.status}): ${text.substring(0, 50)}...`,
+        );
       }
 
       if (!res.ok) throw new Error(data.error || "Failed to fetch captions");
 
       if (data.transcript && data.transcript.length > 0) {
         const newBlocks = data.transcript.map((t) => ({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          id: crypto.randomUUID(),
           type: "dialog",
           time: t.offset / 1000,
           text: t.text,
@@ -134,7 +136,7 @@ const TbmaEditor = ({
     // Insert an action block immediately after the selected index
     const insertTime = tbmaBlocks[index].time; // Adopt the time of the previous dialog
     newBlocks.splice(index + 1, 0, {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: crypto.randomUUID(),
       type: "action",
       time: insertTime,
       text: "",

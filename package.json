@@ -12,7 +12,6 @@
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^5.16.7",
-    "@mui/lab": "^5.0.0-alpha.173",
     "@mui/material": "^5.16.7",
     "@playzone/youtube-transcript": "^1.0.0",
     "@supabase/supabase-js": "^2.98.0",

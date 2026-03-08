@@ -32,3 +32,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# lock file (npm is canonical; ignore yarn)
+yarn.lock

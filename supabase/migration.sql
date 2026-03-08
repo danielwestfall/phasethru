@@ -97,19 +97,23 @@ CREATE POLICY "videos_insert" ON videos FOR INSERT WITH CHECK (true);
 -- Audio descriptions: anyone can read/insert, only author can delete
 CREATE POLICY "ads_select" ON audio_descriptions FOR SELECT USING (true);
 CREATE POLICY "ads_insert" ON audio_descriptions FOR INSERT WITH CHECK (true);
-CREATE POLICY "ads_delete" ON audio_descriptions FOR DELETE USING (true);
+CREATE POLICY "ads_delete" ON audio_descriptions FOR DELETE
+  USING (auth.uid() IS NOT NULL AND user_id = auth.uid());
 
 -- DIY steps: anyone can read/insert, only author can delete
 CREATE POLICY "diy_select" ON diy_steps FOR SELECT USING (true);
 CREATE POLICY "diy_insert" ON diy_steps FOR INSERT WITH CHECK (true);
-CREATE POLICY "diy_delete" ON diy_steps FOR DELETE USING (true);
+CREATE POLICY "diy_delete" ON diy_steps FOR DELETE
+  USING (auth.uid() IS NOT NULL AND user_id = auth.uid());
 
 -- TBMA blocks: anyone can read/insert, only author can delete
 CREATE POLICY "tbma_select" ON tbma_blocks FOR SELECT USING (true);
 CREATE POLICY "tbma_insert" ON tbma_blocks FOR INSERT WITH CHECK (true);
-CREATE POLICY "tbma_delete" ON tbma_blocks FOR DELETE USING (true);
+CREATE POLICY "tbma_delete" ON tbma_blocks FOR DELETE
+  USING (auth.uid() IS NOT NULL AND user_id = auth.uid());
 
--- Votes: anyone can read/insert/update
+-- Votes: anyone can read/insert, only voter can update their own vote
 CREATE POLICY "votes_select" ON votes FOR SELECT USING (true);
 CREATE POLICY "votes_insert" ON votes FOR INSERT WITH CHECK (true);
-CREATE POLICY "votes_update" ON votes FOR UPDATE USING (true);
+CREATE POLICY "votes_update" ON votes FOR UPDATE
+  USING (auth.uid() IS NOT NULL AND user_id = auth.uid());

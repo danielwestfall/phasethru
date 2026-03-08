@@ -103,9 +103,15 @@ const VideoPlayer = () => {
   const appModeRef = useRef(appMode);
   const diyStepsRef = useRef(diySteps);
   const tbmaBlocksRef = useRef(tbmaBlocks);
-  useEffect(() => { appModeRef.current = appMode; }, [appMode]);
-  useEffect(() => { diyStepsRef.current = diySteps; }, [diySteps]);
-  useEffect(() => { tbmaBlocksRef.current = tbmaBlocks; }, [tbmaBlocks]);
+  useEffect(() => {
+    appModeRef.current = appMode;
+  }, [appMode]);
+  useEffect(() => {
+    diyStepsRef.current = diySteps;
+  }, [diySteps]);
+  useEffect(() => {
+    tbmaBlocksRef.current = tbmaBlocks;
+  }, [tbmaBlocks]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -140,7 +146,7 @@ const VideoPlayer = () => {
               // Find the active DIY step we are currently trapped in
               if (player) {
                 const time = player.getCurrentTime();
-                const activeStep = diySteps.find(
+                const activeStep = diyStepsRef.current.find(
                   (step) =>
                     step.videoId === videoId &&
                     time >= step.startTime &&
@@ -271,7 +277,7 @@ const VideoPlayer = () => {
         const [adsRes, diyRes, tbmaRes] = await Promise.all([
           fetch(`/api/db/get-ads?videoId=${videoId}`),
           fetch(`/api/db/get-diy?videoId=${videoId}`),
-          fetch(`/api/db/get-tbma?videoId=${videoId}`)
+          fetch(`/api/db/get-tbma?videoId=${videoId}`),
         ]);
 
         if (adsRes.ok) {
@@ -288,7 +294,9 @@ const VideoPlayer = () => {
           setDiySteps((prev) => {
             const existingIds = new Set(prev.map((step) => step.id));
             const newSteps = dbDiy.filter((dbS) => !existingIds.has(dbS.id));
-            return [...prev, ...newSteps].sort((a, b) => a.startTime - b.startTime);
+            return [...prev, ...newSteps].sort(
+              (a, b) => a.startTime - b.startTime,
+            );
           });
         }
 
@@ -297,7 +305,9 @@ const VideoPlayer = () => {
           setTbmaBlocks((prev) => {
             const flatDbBlocks = dbTbmaSets.flatMap((script) => script.blocks);
             const existingIds = new Set(prev.map((block) => block.id));
-            const newBlocks = flatDbBlocks.filter((dbB) => !existingIds.has(dbB.id));
+            const newBlocks = flatDbBlocks.filter(
+              (dbB) => !existingIds.has(dbB.id),
+            );
             return [...prev, ...newBlocks];
           });
         }
@@ -416,48 +426,53 @@ const VideoPlayer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, player, ads, synth, videoId]); // appMode, diySteps, tbmaBlocks accessed via refs to avoid engine restart
 
-  const playAd = (ad) => {
-    if (!synth) return;
+  const playAd = useCallback(
+    (ad) => {
+      if (!synth) return;
 
-    activeAdRef.current = ad.id; // Mark as playing to prevent re-triggering
-    playedAdsRef.current.add(ad.id); // Mark as finalized for this playback pass
+      activeAdRef.current = ad.id; // Mark as playing to prevent re-triggering
+      playedAdsRef.current.add(ad.id); // Mark as finalized for this playback pass
 
-    // Fallback to global setting if the AD doesn't have a specific voice/rate saved (legacy data)
-    const adVoiceName = ad.voice || selectedVoice;
-    const adRate = ad.rate || speechRate;
+      // Fallback to global setting if the AD doesn't have a specific voice/rate saved (legacy data)
+      const adVoiceName = ad.voice || selectedVoice;
+      const adRate = ad.rate || speechRate;
 
-    const utterance = new SpeechSynthesisUtterance(ad.text);
-    const voiceObj = voices.find((v) => v.name === adVoiceName);
-    if (voiceObj) utterance.voice = voiceObj;
-    utterance.rate = adRate;
+      const utterance = new SpeechSynthesisUtterance(ad.text);
+      const voiceObj = voices.find((v) => v.name === adVoiceName);
+      if (voiceObj) utterance.voice = voiceObj;
+      utterance.rate = adRate;
 
-    setActiveCaption(ad.text); // Display subtitle in Player Mode
+      setActiveCaption(ad.text); // Display subtitle in Player Mode
 
-    // Apply AD Mode
-    if (player) {
-      if (ad.mode === "pause") {
-        player.pauseVideo();
-      } else if (ad.mode === "duck") {
-        player.setVolume(50); // Drop volume to 50%
-      }
-    }
-
-    utterance.onend = () => {
-      // Restore when done
+      // Apply AD Mode
       if (player) {
         if (ad.mode === "pause") {
-          player.playVideo();
+          player.pauseVideo();
         } else if (ad.mode === "duck") {
-          player.setVolume(100);
+          player.setVolume(50); // Drop volume to 50%
         }
       }
-      setActiveCaption(""); // Clear subtitle
-      activeAdRef.current = null; // Clear active AD allowing next one to trigger
-    };
 
-    window.speechUtteranceBugWorkaround = utterance;
-    synth.speak(utterance);
-  };
+      utterance.onend = () => {
+        // Restore when done
+        if (player) {
+          if (ad.mode === "pause") {
+            player.playVideo();
+          } else if (ad.mode === "duck") {
+            player.setVolume(100);
+          }
+        }
+        setActiveCaption(""); // Clear subtitle
+        activeAdRef.current = null; // Clear active AD allowing next one to trigger
+      };
+
+      // Chrome GC bug workaround: keeps a reference to the utterance to prevent
+      // premature garbage collection which silently kills speech mid-sentence.
+      window.speechUtteranceBugWorkaround = utterance;
+      synth.speak(utterance);
+    },
+    [synth, voices, selectedVoice, speechRate, player],
+  );
 
   const testSpeech = () => {
     if (!synth) return;
@@ -476,6 +491,7 @@ const VideoPlayer = () => {
     if (voiceObj) utterance.voice = voiceObj;
     utterance.rate = currentRate;
 
+    // Chrome GC bug workaround (see playAd for full explanation)
     window.speechUtteranceBugWorkaround = utterance;
     synth.speak(utterance);
   };
@@ -501,7 +517,9 @@ const VideoPlayer = () => {
     } else if (videoInput.length === 11) {
       setVideoId(videoInput); // Assume it's already an ID
     } else {
-      alert("Invalid YouTube URL or ID");
+      setToastMessage(
+        "Invalid YouTube URL or ID. Please paste a valid link or 11-character video ID.",
+      );
       return;
     }
     setVideoInput("");
@@ -560,27 +578,31 @@ const VideoPlayer = () => {
     const sessionId = user?.id || getSessionId();
     const video = {
       id: videoId,
-      title: videoMetadata.title || '',
-      author: videoMetadata.author || '',
+      title: videoMetadata.title || "",
+      author: videoMetadata.author || "",
     };
 
     try {
       const promises = [];
       const sessionData = await supabase?.auth.getSession();
       const token = sessionData?.data?.session?.access_token;
-      
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
       // Save ADs for this video
       const currentVideoAds = ads.filter((ad) => ad.videoId === videoId);
       if (currentVideoAds.length > 0) {
         promises.push(
-          fetch('/api/db/save-ads', {
-            method: 'POST',
+          fetch("/api/db/save-ads", {
+            method: "POST",
             headers,
-            body: JSON.stringify({ video, ads: currentVideoAds, authorId: sessionId }),
-          })
+            body: JSON.stringify({
+              video,
+              ads: currentVideoAds,
+              authorId: sessionId,
+            }),
+          }),
         );
       }
 
@@ -588,22 +610,30 @@ const VideoPlayer = () => {
       const currentDiySteps = diySteps.filter((s) => s.videoId === videoId);
       if (currentDiySteps.length > 0) {
         promises.push(
-          fetch('/api/db/save-diy', {
-            method: 'POST',
+          fetch("/api/db/save-diy", {
+            method: "POST",
             headers,
-            body: JSON.stringify({ video, steps: currentDiySteps, authorId: sessionId }),
-          })
+            body: JSON.stringify({
+              video,
+              steps: currentDiySteps,
+              authorId: sessionId,
+            }),
+          }),
         );
       }
 
       // Save TBMA blocks if any exist
       if (tbmaBlocks.length > 0) {
         promises.push(
-          fetch('/api/db/save-tbma', {
-            method: 'POST',
+          fetch("/api/db/save-tbma", {
+            method: "POST",
             headers,
-            body: JSON.stringify({ video, blocks: tbmaBlocks, authorId: sessionId }),
-          })
+            body: JSON.stringify({
+              video,
+              blocks: tbmaBlocks,
+              authorId: sessionId,
+            }),
+          }),
         );
       }
 
@@ -622,7 +652,7 @@ const VideoPlayer = () => {
       setHasUnsavedChanges(false);
       setToastMessage("✅ Successfully saved to database!");
     } catch (error) {
-      console.error('DB save error:', error);
+      console.error("DB save error:", error);
       // Graceful fallback: save locally instead
       handleSaveLocally();
       setToastMessage(
@@ -645,7 +675,7 @@ const VideoPlayer = () => {
             (ad) => ad.time != null && ad.text && ad.mode,
           );
           if (validAds.length === 0) {
-            alert("No valid audio descriptions found in the file.");
+            setToastMessage("No valid audio descriptions found in the file.");
             return;
           }
           const mergedAds = [...ads, ...validAds].sort(
@@ -658,7 +688,7 @@ const VideoPlayer = () => {
           );
         }
       } catch (err) {
-        alert("Invalid JSON file uploaded.");
+        setToastMessage("Invalid JSON file uploaded.");
       }
     };
     reader.readAsText(file);
@@ -692,8 +722,8 @@ const VideoPlayer = () => {
   const onError = (event) => {
     // Error 150/101 means "Playback on other websites has been disabled by the video owner."
     if (event.data === 150 || event.data === 101) {
-      alert(
-        "The video owner has disabled embedding for this video. Searching YouTube for alternatives...",
+      setToastMessage(
+        "The video owner has disabled embedding for this video. Searching for alternatives...",
       );
       if (videoMetadata?.title || videoInput) {
         setSearchQuery(videoMetadata?.title || videoInput);
@@ -731,7 +761,7 @@ const VideoPlayer = () => {
     if (!newAdText) return;
 
     const newAd = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       videoId: videoId,
       videoTitle: videoMetadata?.title || "Unknown Title",
       videoAuthor: videoMetadata?.author || "Unknown Author",
@@ -758,12 +788,12 @@ const VideoPlayer = () => {
 
   const handleAddDiyStep = () => {
     if (newStepStart >= newStepEnd) {
-      alert("End time must be greater than start time.");
+      setToastMessage("End time must be greater than start time.");
       return;
     }
 
     const newStep = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       videoId: videoId,
       startTime: parseFloat(newStepStart),
       endTime: parseFloat(newStepEnd),
@@ -805,29 +835,29 @@ const VideoPlayer = () => {
       const sessionId = user?.id || getSessionId();
       const sessionData = await supabase?.auth.getSession();
       const token = sessionData?.data?.session?.access_token;
-      
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/db/vote', {
-        method: 'POST',
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/db/vote", {
+        method: "POST",
         headers,
         body: JSON.stringify({
           adId: id,
           voterId: sessionId,
-          direction: direction === 'up' ? 1 : -1,
+          direction: direction === "up" ? 1 : -1,
         }),
       });
       if (res.ok) {
         const data = await res.json();
         // Sync the server-authoritative vote count back
         setAds((prev) =>
-          prev.map((ad) => (ad.id === id ? { ...ad, votes: data.votes } : ad))
+          prev.map((ad) => (ad.id === id ? { ...ad, votes: data.votes } : ad)),
         );
       }
     } catch (err) {
       // Vote already applied optimistically, silent fail is fine
-      console.warn('Vote sync failed:', err);
+      console.warn("Vote sync failed:", err);
     }
   };
 
@@ -863,22 +893,27 @@ const VideoPlayer = () => {
           content="Author, share, and playback audio descriptions for YouTube videos. Includes DIY looping, TBMA scripting, and voice control."
         />
       </Head>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4">
-          Audio Description Player
-        </Typography>
-        
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Typography variant="h4">Audio Description Player</Typography>
+
         {user ? (
-          <Button 
-            variant="outlined" 
+          <Button
+            variant="outlined"
             startIcon={<LogoutIcon />}
             onClick={() => supabase.auth.signOut()}
           >
             Sign Out
           </Button>
         ) : (
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             startIcon={<PersonIcon />}
             onClick={() => setIsLoginOpen(true)}
           >
