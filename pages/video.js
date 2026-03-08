@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import YouTube from "react-youtube";
-import { getSessionId } from "../lib/supabase";
+import { supabase, getSessionId } from "../lib/supabase";
 import {
   Button,
   TextField,
