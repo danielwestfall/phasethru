@@ -969,7 +969,7 @@ const VideoPlayer = () => {
         padding: isEmbedded ? "0px" : "20px",
         maxWidth: isEmbedded ? "100%" : "1200px",
         margin: "0 auto",
-        height: isEmbedded ? "100vh" : "auto",
+        height: isEmbedded ? "100dvh" : "auto",
         display: isEmbedded ? "flex" : "block",
         flexDirection: isEmbedded ? "column" : "unset",
       }}
@@ -1130,7 +1130,7 @@ const VideoPlayer = () => {
               onReady={onReady}
               onError={onError}
               onStateChange={onStateChange}
-              opts={{ playerVars: { controls: 1 } }}
+              opts={{ playerVars: { controls: 1, playsinline: 1 } }}
               className="youtube-container"
             />
 

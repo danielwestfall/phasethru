@@ -354,7 +354,7 @@ const WatchPlayer = () => {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          height: "100vh",
+          height: "100dvh",
         }}
       >
         <Typography variant="h6">Loading Video ID...</Typography>
@@ -460,7 +460,7 @@ const WatchPlayer = () => {
                   onReady={onReady}
                   onError={onError}
                   onStateChange={onStateChange}
-                  opts={{ playerVars: { controls: 1 } }}
+                  opts={{ playerVars: { controls: 1, playsinline: 1 } }}
                   className="youtube-container"
                 />
               )}
