@@ -2,6 +2,10 @@
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdanielwestfall%2Fphasethru)
 
+> **⚖️ Licensing Notice**: PhaseThru is released under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+> You are free to copy, modify, distribute, and use this software for **personal, educational, and non-commercial purposes**.
+> You **may not** use this software for commercial purposes (including selling it or incorporating it into a paid product) without explicit, separate written permission from the creator.
+
 A revolutionary, accessible web-based Video Player built for Authoring Audio Descriptions (AD), structuring interactive DIY Guides, and providing a streamlined hands-free voice-controlled Player experience.
 
 Built on **React 18**, **Next.js 14**, **Supabase**, and the **YouTube IFrame API**.
@@ -19,6 +23,7 @@ Through its **community-driven database**, users can permanently save, share, di
 PhaseThru operates in several distinct Application Modes, toggleable via the main interface:
 
 ### 1. 🎙️ Audio Description (AD) Editor Mode
+
 - **Author Descriptions**: Pause the video at any timestamp and author a custom string of text.
 - **Text-To-Speech Integration**: Utilizing the native Web Speech API, PhaseThru will automatically read your descriptions at the designated timestamps.
 - **Customizable Voices & Speed**: Select from diverse system voices and adjust the reading rate per AD.
@@ -26,16 +31,19 @@ PhaseThru operates in several distinct Application Modes, toggleable via the mai
 - **Community Voting**: Upvote or downvote ADs to surface the best community descriptions.
 
 ### 2. 🛠️ DIY Mode Map
+
 - **Segment Looping**: Define explicit "Steps" for a project (e.g., Step 1: 00:30 - 01:15).
 - **Auto-Looping**: The video will naturally loop within this timeframe until you are ready to move on.
 - **Contextual Aids**: Add optional ADs that play continuously during the loop to clarify visual instructions that the creator missed.
 
 ### 3. 📜 TBMA Script Editor
+
 - **Time-Based Media Alternative**: Import a video's Closed Captions as a dialog script, then inject "Action" blocks in between to describe unseen events.
 - **Auto-Fetch Captions**: Automatically retrieves YouTube's transcript via a backend API route.
 - **Manual VTT Import**: Paste raw `.vtt` caption data as a fallback when auto-fetch is blocked.
 
 ### 4. ▶️ Player Mode
+
 - **Immersive Viewing**: A clean, full-width UI focused entirely on the content.
 - **Closed Caption Overlay**: While TTS is speaking an AD, the text is displayed over the video in a high-contrast CC format.
 - **Hands-Free Voice Control**: Designed for users who have their hands tied (e.g., during woodworking or cooking). Simply utilize Voice Commands:
@@ -44,6 +52,7 @@ PhaseThru operates in several distinct Application Modes, toggleable via the mai
   - `"Next Step"` / `"Continue"`: Automatically breaks the current DIY Loop and advances the playback.
 
 ### 5. 🔍 YouTube Search Integration & Fallbacks
+
 - Easily load videos via URL or Video ID.
 - Advanced Error Handling catches videos that restrict embedding (Error 150/101) and automatically searches YouTube via an API backend to provide clickable, alternative variations of that exact video.
 
@@ -54,19 +63,24 @@ PhaseThru operates in several distinct Application Modes, toggleable via the mai
 To run PhaseThru locally in your development environment:
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/danielwestfall/phasethru.git
 cd phasethru
 ```
 
 ### 2. Install Dependencies
+
 Requires Node.js 18+.
+
 ```bash
 npm install
 ```
 
 ### 3. Configure Supabase (Database & Auth)
+
 PhaseThru uses Supabase for storing community data and managing user profiles.
+
 1. Copy the example environment file:
    ```bash
    cp .env.local.example .env.local
@@ -81,6 +95,7 @@ PhaseThru uses Supabase for storing community data and managing user profiles.
    - Under **Redirect URLs**, add `http://localhost:3000/*` (or your specific local port) and your production Vercel URL.
 
 ### 4. Start the Development Server
+
 ```bash
 npm run dev
 ```
@@ -94,6 +109,7 @@ Navigate to `http://localhost:3000` (or `3001` if requested) — you will be red
 This project uses **Next.js** within the `/pages` directory structure. Open-source contributions are highly welcome!
 
 ### Core Technologies
+
 - `next` 14, `react` 18: Core framework and UI library.
 - `@supabase/supabase-js`: Backend database client for saving and discovering community accessibility metadata.
 - `react-youtube`: Manages the YouTube IFrame API.
@@ -103,6 +119,7 @@ This project uses **Next.js** within the `/pages` directory structure. Open-sour
 - `window.speechSynthesis` / `window.SpeechRecognition`: Core native APIs powering TTS and Voice Control.
 
 ### File Structure
+
 ```
 pages/
   video.js          — Central app container: state, playback engine, modes
@@ -126,6 +143,7 @@ styles/
 ```
 
 ### Accessibility (WCAG 2.2 AA)
+
 We strive to maintain high accessibility standards. The application includes strict ARIA labels for screen readers and adheres to AA contrast ratios (4.5:1) for warnings/unsaved state indicators.
 
 ---
