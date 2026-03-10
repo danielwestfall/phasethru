@@ -1182,7 +1182,7 @@ const VideoPlayer = () => {
                 <Typography
                   variant="caption"
                   style={{
-                    color: isListening ? "#4caf50" : "#9e9e9e",
+                    color: isListening ? "#2e7d32" : "#616161", // WCAG AA compliant contrast against white background
                     fontWeight: "bold",
                   }}
                 >

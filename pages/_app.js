@@ -8,7 +8,7 @@ const theme = createTheme({
       main: "#1976d2",
     },
     secondary: {
-      main: "#e91e63",
+      main: "#c2185b", // Darkened from #e91e63 to meet 4.5:1 contrast ratio
     },
   },
 });

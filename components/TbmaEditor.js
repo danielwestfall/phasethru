@@ -206,7 +206,7 @@ const TbmaEditor = ({
           <style>
             body { font-family: sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
             h1 { font-size: 24px; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-            .meta { color: #666; font-size: 14px; margin-bottom: 30px; }
+            .meta { color: #444; font-size: 14px; margin-bottom: 30px; }
             .block { margin-bottom: 15px; }
             .time { font-weight: bold; font-family: monospace; display: inline-block; width: 80px; }
             .action { color: #d81b60; }

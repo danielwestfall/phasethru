@@ -25,6 +25,12 @@ a {
   box-sizing: border-box;
 }
 
+/* Ensure strong focus outlines for accessibility */
+*:focus-visible {
+  outline: 3px solid #ff9800 !important; /* High contrast orange focus indicator */
+  outline-offset: 2px !important;
+}
+
 /* YouTube embedded player sizing */
 .youtube-container {
   position: absolute;
