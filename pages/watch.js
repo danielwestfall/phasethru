@@ -16,9 +16,31 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
+const COOKING_VIDEO_IDS = [
+  "PUP7U5vTMM0", // Gordon Ramsay Scrambled Eggs
+  "8a3Omai9HZ8", // Jamie Oliver Roast Potatoes
+  "UI1M90vA2N4", // Binging with Babish
+  "smIOeJRexWI", // Gordon Ramsay Beef Wellington
+  "FeWVA2tpup4", // Tasty recipes
+];
+
 const WatchPlayer = () => {
   const router = useRouter();
-  const videoId = router.isReady ? router.query.v : null;
+  const [videoId, setVideoId] = useState("");
+
+  useEffect(() => {
+    if (router.isReady) {
+      if (router.query.v) {
+        setVideoId(router.query.v);
+      } else if (!videoId) {
+        const randomId =
+          COOKING_VIDEO_IDS[
+            Math.floor(Math.random() * COOKING_VIDEO_IDS.length)
+          ];
+        setVideoId(randomId);
+      }
+    }
+  }, [router.isReady, router.query.v, videoId]);
 
   // Video State
   const [videoMetadata, setVideoMetadata] = useState(null);

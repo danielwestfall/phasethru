@@ -38,7 +38,15 @@ import AdTimeline from "../components/AdTimeline";
 import DiyTimeline from "../components/DiyTimeline";
 import TbmaEditor from "../components/TbmaEditor";
 
-const DEFAULT_VIDEO_ID = "mTz0GXj8NN0";
+const DEFAULT_VIDEO_ID = "mTz0GXj8NN0"; // Legacy fallback
+
+const COOKING_VIDEO_IDS = [
+  "PUP7U5vTMM0", // Gordon Ramsay Scrambled Eggs
+  "8a3Omai9HZ8", // Jamie Oliver Roast Potatoes
+  "UI1M90vA2N4", // Binging with Babish
+  "smIOeJRexWI", // Gordon Ramsay Beef Wellington
+  "FeWVA2tpup4", // Tasty recipes
+];
 
 const VideoPlayer = () => {
   const router = useRouter();
@@ -46,9 +54,24 @@ const VideoPlayer = () => {
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
 
   // Video Selection State
-  const [videoId, setVideoId] = useState(DEFAULT_VIDEO_ID);
+  const [videoId, setVideoId] = useState("");
   const [videoInput, setVideoInput] = useState("");
   const [videoMetadata, setVideoMetadata] = useState(null);
+
+  // Initialize random cooking video if no specific video is requested
+  useEffect(() => {
+    if (router.isReady) {
+      if (router.query.videoId) {
+        setVideoId(router.query.videoId);
+      } else if (!videoId) {
+        const randomId =
+          COOKING_VIDEO_IDS[
+            Math.floor(Math.random() * COOKING_VIDEO_IDS.length)
+          ];
+        setVideoId(randomId);
+      }
+    }
+  }, [router.isReady, router.query.videoId, videoId]);
 
   // Search State
   const [searchOpen, setSearchOpen] = useState(false);
