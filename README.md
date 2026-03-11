@@ -1,21 +1,18 @@
-# EquiViewer ✨
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdanielwestfall%2Fequiviewer)
 **[View on GitHub](https://github.com/danielwestfall/equiviewer)** | **[Launch App](https://equiviewer.app)**
 
 > **⚖️ Licensing Notice**: EquiViewer is released under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 > You are free to copy, modify, distribute, and use this software for **personal, educational, and non-commercial purposes**.
 > You **may not** use this software for commercial purposes (including selling it or incorporating it into a paid product) without explicit, separate written permission from the creator.
 
-A revolutionary, accessible web-based Video Player built for Authoring Audio Descriptions (AD), structuring interactive DIY Guides, and providing a streamlined hands-free voice-controlled Player experience.
+An accessible web-based Video Player built for adding programmatic Audio Descriptions (AD), transcript-based Audio Descriptions (TBMA), filling in the gaps in existing captions, or structuring interactive DIY Guides, or providing a streamlined hands-free voice-controlled Player experience.
 
 Built on **React 18**, **Next.js 14**, **Supabase**, and the **YouTube IFrame API**.
 
 ## 🎯 Project Philosophy
 
-EquiViewer aims to bridge the gap in media accessibility and interactive learning by empowering creators and users to inject custom audio contexts into existing YouTube videos without needing complex video editing software. Whether you are generating WCAG-compliant Audio Descriptions for the visually impaired or breaking down complex DIY videos into loopable, voice-controllable segments, EquiViewer provides the tools in one unified interface.
+EquiViewer aims to bridge the gap in 3rd party hosted media accessibility by empowering creators and users to inject custom audio contexts into existing YouTube videos without needing complex video editing software. Whether you are generating WCAG-compliant Audio Descriptions for users who are visually impaired, filling in the gaps in auto generated captions, or breaking down complex DIY videos into loopable, voice-controllable segments for a hands-free experience, EquiViewer provides the tools in one unified interface.
 
-Through its **community-driven database**, users can permanently save, share, discover, and vote on accessibility layers created by others for any YouTube video.
+Through its **community-driven database**, users can permanently save, share, discover, and vote on accessibility layers created by others for most YouTube videos. Due to owner permissions, some videos may not be available for use with EquiViewer. If you encounter a video that is not available, please contact the video owner and request that they enable embedding for their videos.
 
 ---
 
@@ -28,20 +25,20 @@ EquiViewer operates in several distinct Application Modes, toggleable via the ma
 - **Author Descriptions**: Pause the video at any timestamp and author a custom string of text.
 - **Text-To-Speech Integration**: Utilizing the native Web Speech API, EquiViewer will automatically read your descriptions at the designated timestamps.
 - **Customizable Voices & Speed**: Select from diverse system voices and adjust the reading rate per AD.
-- **Playback Sync Engine**: Choose whether the video should **Pause** entirely while the TTS reads the AD, or **Duck** (lower volume) to let the audio mix in real-time.
+- **Standard or Extended AD**: Choose whether the video should **Pause** entirely while the TTS reads the AD, or **Duck** (lower volume) to let the audio mix in real-time.
 - **Community Voting**: Upvote or downvote ADs to surface the best community descriptions.
 
-### 2. 🛠️ DIY Mode Map
+### 2. 📜 TBMA Script Editor
+
+- **Time-Based Media Alternative**: Experimental feature. Import a video's Closed Captions as a dialog script, then inject "Action" blocks in between to describe unseen events.
+- **Auto-Fetch Captions**: Automatically retrieves YouTube's transcript via a backend API route.
+- **Manual VTT Import**: Paste raw `.vtt` caption data as a fallback when auto-fetch is blocked.
+
+### 3. 🛠️ DIY Mode Map
 
 - **Segment Looping**: Define explicit "Steps" for a project (e.g., Step 1: 00:30 - 01:15).
 - **Auto-Looping**: The video will naturally loop within this timeframe until you are ready to move on.
-- **Contextual Aids**: Add optional ADs that play continuously during the loop to clarify visual instructions that the creator missed.
-
-### 3. 📜 TBMA Script Editor
-
-- **Time-Based Media Alternative**: Import a video's Closed Captions as a dialog script, then inject "Action" blocks in between to describe unseen events.
-- **Auto-Fetch Captions**: Automatically retrieves YouTube's transcript via a backend API route.
-- **Manual VTT Import**: Paste raw `.vtt` caption data as a fallback when auto-fetch is blocked.
+- **Contextual Aids**: Add optional ADs that play continuously during the loop to clarify visual instructions that the creator missed or to add your own context.
 
 ### 4. ▶️ Player Mode
 
