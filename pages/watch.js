@@ -16,13 +16,7 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
-const COOKING_VIDEO_IDS = [
-  "PUP7U5vTMM0", // Gordon Ramsay Scrambled Eggs
-  "8a3Omai9HZ8", // Jamie Oliver Roast Potatoes
-  "UI1M90vA2N4", // Binging with Babish
-  "smIOeJRexWI", // Gordon Ramsay Beef Wellington
-  "WzEHoCRwvw0", // Jamie Oliver 15 Min Meals
-];
+const DEFAULT_VIDEO_ID = "AVx0oamyxLQ";
 
 const WatchPlayer = () => {
   const router = useRouter();
@@ -35,11 +29,7 @@ const WatchPlayer = () => {
       if (router.query.v) {
         setVideoId(router.query.v);
       } else if (!videoId) {
-        const randomId =
-          COOKING_VIDEO_IDS[
-            Math.floor(Math.random() * COOKING_VIDEO_IDS.length)
-          ];
-        setVideoId(randomId);
+        setVideoId(DEFAULT_VIDEO_ID);
       }
     }
   }, [router.isReady, router.query.v, videoId]);
