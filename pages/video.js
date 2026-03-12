@@ -25,6 +25,7 @@ import {
   DialogActions,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DownloadIcon from "@mui/icons-material/Download";
 import SaveIcon from "@mui/icons-material/Save";
 import StorageIcon from "@mui/icons-material/Storage";
 import SearchIcon from "@mui/icons-material/Search";
@@ -44,6 +45,11 @@ const VideoPlayer = () => {
   const router = useRouter();
   const isEmbedded = router.isReady ? router.query.embed === "true" : false;
   const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Video Selection State
   const [videoId, setVideoId] = useState("");
@@ -91,13 +97,17 @@ const VideoPlayer = () => {
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1);
+  const [speechPitch, setSpeechPitch] = useState(1);
 
   // Authoring State
   const [newAdText, setNewAdText] = useState("");
   const [newAdTime, setNewAdTime] = useState(0);
-  const [newAdMode, setNewAdMode] = useState("pause"); // 'pause' or 'duck'
+  const [newAdMode, setNewAdMode] = useState("pause"); // 'pause', 'duck', or 'fluid'
+  const [newAdVideoRate, setNewAdVideoRate] = useState(1);
+  const [newAdVideoVolume, setNewAdVideoVolume] = useState(50);
   const [newAdVoice, setNewAdVoice] = useState("");
   const [newAdRate, setNewAdRate] = useState(1);
+  const [newAdPitch, setNewAdPitch] = useState(1);
 
   // Save & DB State
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -113,6 +123,7 @@ const VideoPlayer = () => {
   const synth = synthRef.current;
   const intervalRef = useRef(null);
   const activeAdRef = useRef(null); // Track if an AD is currently playing
+  const activeAdsQueueRef = useRef(new Set()); // Track multiple ADs if they overlap
   const playedAdsRef = useRef(new Set()); // Track which ADs have already played during this playback session
 
   // Voice Command & Caption State
@@ -251,6 +262,18 @@ const VideoPlayer = () => {
         }));
         setAds(migratedAds);
       }
+
+      const savedRate = localStorage.getItem("speechRate");
+      if (savedRate) setSpeechRate(parseFloat(savedRate));
+
+      const savedPitch = localStorage.getItem("speechPitch");
+      if (savedPitch) setSpeechPitch(parseFloat(savedPitch));
+
+      const savedVoice = localStorage.getItem("selectedVoice");
+      if (savedVoice) {
+        setSelectedVoice(savedVoice);
+        setNewAdVoice(savedVoice);
+      }
     } catch (e) {
       console.warn("Failed to load saved ADs from storage", e);
     }
@@ -279,8 +302,10 @@ const VideoPlayer = () => {
           const defaultVoice =
             availableVoices.find((v) => v.lang.startsWith("en")) ||
             availableVoices[0];
-          setSelectedVoice(defaultVoice.name);
-          setNewAdVoice(defaultVoice.name);
+          
+          const initialVoice = localStorage.getItem("selectedVoice") || defaultVoice.name;
+          setSelectedVoice(initialVoice);
+          setNewAdVoice(initialVoice);
         }
       }
     };
@@ -436,14 +461,12 @@ const VideoPlayer = () => {
 
           // Only trigger if we are PAST the exact timestamp, but no more than 0.25s past
           const isTimeMatch = time >= ad.time && time < ad.time + 0.25;
-          const isPlayingSomethingElse =
-            activeAdRef.current !== null && activeAdRef.current !== ad.id;
           const alreadyPlayed = playedAdsRef.current.has(ad.id);
 
-          return isTimeMatch && !isPlayingSomethingElse && !alreadyPlayed;
+          return isTimeMatch && !alreadyPlayed;
         });
 
-        if (adToPlay && !synth.speaking) {
+        if (adToPlay) {
           playAd(adToPlay);
         }
 
@@ -499,11 +522,15 @@ const VideoPlayer = () => {
       const voiceObj = voices.find((v) => v.name === adVoiceName);
       if (voiceObj) utterance.voice = voiceObj;
       utterance.rate = adRate;
+      utterance.pitch = ad.pitch || speechPitch;
 
       setActiveCaption(ad.text); // Display subtitle in Player Mode
 
       // Apply AD Mode
       if (player) {
+        // Ensure we are at full volume before starting (in case previous DUCK failed to reset)
+        player.setVolume(100);
+
         if (ad.mode === "pause") {
           player.pauseVideo();
         } else if (ad.mode === "duck") {
@@ -512,21 +539,43 @@ const VideoPlayer = () => {
       }
 
       utterance.onend = () => {
-        // Restore when done
+        // Remove from active queue
+        activeAdsQueueRef.current.delete(ad.id);
+
+        // Restore when done, but ONLY if no other ADs are still speaking
+        if (player && activeAdsQueueRef.current.size === 0) {
+          player.setVolume(100);
+          player.setPlaybackRate(1); // Restore normal video speed
+          player.playVideo();
+          setActiveCaption(""); 
+          activeAdRef.current = null;
+        }
+      };
+
+      utterance.onstart = () => {
+        // activeAdsQueueRef.current.add(ad.id); // Now added immediately in playAd
+        activeAdRef.current = ad.id;
+        setActiveCaption(ad.text);
+
+        // Apply AD Mode
         if (player) {
           if (ad.mode === "pause") {
-            player.playVideo();
+            player.pauseVideo();
           } else if (ad.mode === "duck") {
-            player.setVolume(100);
+            player.setVolume(50);
+          } else if (ad.mode === "fluid") {
+            player.setPlaybackRate(ad.videoRate || 0.5);
+            player.setVolume(ad.videoVolume !== undefined ? ad.videoVolume : 50);
           }
         }
-        setActiveCaption(""); // Clear subtitle
-        activeAdRef.current = null; // Clear active AD allowing next one to trigger
       };
 
       // Chrome GC bug workaround: keeps a reference to the utterance to prevent
       // premature garbage collection which silently kills speech mid-sentence.
       window.speechUtteranceBugWorkaround = utterance;
+
+      // Track immediately to prevent premature volume restoration if another AD starts
+      activeAdsQueueRef.current.add(ad.id); 
       synth.speak(utterance);
     },
     [synth, voices, selectedVoice, speechRate, player],
@@ -535,23 +584,31 @@ const VideoPlayer = () => {
   const testSpeech = () => {
     if (!synth) return;
 
-    synth.cancel();
+    const currentVoiceName = newAdVoice || selectedVoice;
+    const currentRate = newAdRate || speechRate;
+    const currentPitch = newAdPitch || speechPitch;
 
     const textToRead =
       newAdText ||
-      "This is a sample sentence to test the text to speech settings.";
+      `Testing ${currentVoiceName} at rate ${currentRate} and pitch ${currentPitch}.`;
     const utterance = new SpeechSynthesisUtterance(textToRead);
-
-    const currentVoiceName = newAdVoice || selectedVoice;
-    const currentRate = newAdRate || speechRate;
 
     const voiceObj = voices.find((v) => v.name === currentVoiceName);
     if (voiceObj) utterance.voice = voiceObj;
     utterance.rate = currentRate;
+    utterance.pitch = currentPitch;
 
     // Chrome GC bug workaround (see playAd for full explanation)
     window.speechUtteranceBugWorkaround = utterance;
     synth.speak(utterance);
+  };
+
+  const estimateDuration = (text, rate = 1) => {
+    if (!text) return 0;
+    // Heuristic: ~150-160 words per minute (WPM) at rate 1.0 for clearer speech.
+    // CPS factor = 14 * rate (previously 18, which was too fast)
+    const charsPerSecond = 14 * rate;
+    return Math.max(0.5, parseFloat((text.length / charsPerSecond).toFixed(1)));
   };
 
   const extractVideoId = (url) => {
@@ -753,6 +810,22 @@ const VideoPlayer = () => {
     e.target.value = null; // Reset input
   };
 
+  const handleDownloadBackup = () => {
+    if (ads.length === 0) {
+      setToastMessage("No descriptions to backup.");
+      return;
+    }
+    const dataStr = JSON.stringify(ads, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `AD_Backup_${videoMetadata?.title.replace(/[^a-z0-9]/gi, "_") || "Video"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setToastMessage("Local AD Backup File downloaded!");
+  };
+
   const onReady = (event) => {
     setPlayer(event.target);
 
@@ -799,42 +872,73 @@ const VideoPlayer = () => {
   };
 
   const onStateChange = (event) => {
-    setIsPlaying(event.data === 1);
+    const isNowPlaying = event.data === 1;
+    const isPaused = event.data === 2;
+    setIsPlaying(isNowPlaying);
 
-    if (event.data === 1 && player) {
-      const time = player.getCurrentTime();
-      // Prune already-played ads that are in the future (seek backwards case)
-      // Checks both regular ADs and TBMA blocks
-      playedAdsRef.current = new Set(
-        [...playedAdsRef.current].filter((id) => {
-          const ad = [...ads, ...tbmaBlocks].find((a) => a.id === id);
-          return ad && ad.time < time;
-        }),
-      );
+    if (isNowPlaying) {
+      if (synth && synth.paused) synth.resume();
+      if (player) {
+        const time = player.getCurrentTime();
+        // Prune already-played ads that are in the future (seek backwards case)
+        playedAdsRef.current = new Set(
+          [...playedAdsRef.current].filter((id) => {
+            const ad = [...ads, ...tbmaBlocks].find((a) => a.id === id);
+            return ad && ad.time < time;
+          }),
+        );
+      }
+    } else if (isPaused) { 
+      // Only pause TTS if it wasn't the AD itself that triggered the pause
+      const currentAd = [...ads, ...tbmaBlocks].find(a => a.id === activeAdRef.current);
+      if (synth && synth.speaking && (!currentAd || currentAd.mode !== "pause")) {
+        synth.pause();
+      }
+    } else if (event.data !== 3) {
+      // 3 is BUFFERING. We exempt it so TTS survives the transition from PAUSED -> BUFFERING -> PLAYING.
+      // For any other state (ENDED, CUED), cancel active speech to prevent stale audio.
+      if (synth && synth.speaking) {
+        synth.cancel();
+        activeAdRef.current = null;
+        activeAdsQueueRef.current.clear(); // Clear queue on interruptions
+        if (player) {
+          player.setVolume(100);
+          player.setPlaybackRate(1);
+        }
+        setActiveCaption("");
+      }
     }
   };
 
   const handleCaptureTime = (setter) => {
     if (player) {
-      const time = player.getCurrentTime();
-      if (setter) setter(parseFloat(time.toFixed(2)));
-      else setNewAdTime(parseFloat(time.toFixed(2))); // fallback for ad editor
+      let time = player.getCurrentTime();
+      if (time < 0.5) time = 0.5; // Enforce minimum 0.5s for reliability
+      const formattedTime = parseFloat(time.toFixed(2));
+      if (setter) setter(formattedTime);
+      else setNewAdTime(formattedTime); // fallback for ad editor
     }
   };
 
   const handleAddAd = () => {
     if (!newAdText) return;
 
+    const adDuration = estimateDuration(newAdText, newAdRate || speechRate);
+    let adTime = parseFloat(newAdTime);
+    if (adTime < 0.5) adTime = 0.5; // Enforce minimum 0.5s
+
     const newAd = {
       id: crypto.randomUUID(),
       videoId: videoId,
-      videoTitle: videoMetadata?.title || "Unknown Title",
-      videoAuthor: videoMetadata?.author || "Unknown Author",
-      time: parseFloat(newAdTime),
+      time: adTime,
       text: newAdText,
       mode: newAdMode,
+      videoRate: newAdMode === "fluid" ? newAdVideoRate : 1,
+      videoVolume: newAdMode === "fluid" ? newAdVideoVolume : 100,
       voice: newAdVoice || selectedVoice,
       rate: newAdRate || speechRate,
+      pitch: newAdPitch || speechPitch,
+      duration: adDuration,
       votes: 0, // Default to 0 votes for new ADs
     };
 
@@ -872,7 +976,26 @@ const VideoPlayer = () => {
     );
     setDiySteps(updatedSteps);
     setHasUnsavedChanges(true);
-    setNewStepAd("");
+    setToastMessage("AD added to timeline.");
+  };
+
+  const handleUpdateAd = (updatedAd) => {
+    // Enforce 0.5s minimum on update as well
+    if (updatedAd.time < 0.5) updatedAd.time = 0.5;
+
+    // Ensure videoRate and videoVolume are valid
+    if (updatedAd.mode === "fluid") {
+      if (!updatedAd.videoRate) updatedAd.videoRate = 1;
+      if (updatedAd.videoVolume === undefined) updatedAd.videoVolume = 50;
+    }
+
+    setAds((prev) =>
+      prev
+        .map((ad) => (ad.id === updatedAd.id ? updatedAd : ad))
+        .sort((a, b) => a.time - b.time),
+    );
+    setHasUnsavedChanges(true);
+    setToastMessage("AD updated.");
   };
 
   const handleDeleteDiyStep = (id) => {
@@ -985,7 +1108,7 @@ const VideoPlayer = () => {
               alt="EquiViewer Logo"
               style={{ height: "40px" }}
             />
-            <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+            <Typography variant="h4" sx={{ fontWeight: "bold", color: "#212121" }}>
               EquiViewer Editor
             </Typography>
           </Box>
@@ -1046,7 +1169,7 @@ const VideoPlayer = () => {
           <div style={{ display: "flex", alignItems: "center" }}>
             <Typography
               variant="h6"
-              style={{ marginRight: "15px", minWidth: "150px" }}
+              style={{ marginRight: "15px", minWidth: "150px", color: "#212121" }}
             >
               Load Video:
             </Typography>
@@ -1189,7 +1312,7 @@ const VideoPlayer = () => {
                 <Typography
                   variant="caption"
                   style={{
-                    color: isListening ? "#2e7d32" : "#616161", // WCAG AA compliant contrast against white background
+                    color: isListening ? "#1b5e20" : "#424242", // Darker green and darker gray for contrast
                     fontWeight: "bold",
                   }}
                 >
@@ -1205,18 +1328,19 @@ const VideoPlayer = () => {
             <div
               style={{
                 padding: "10px",
-                backgroundColor: "#f0f0f0",
+                backgroundColor: "#e0e0e0", // Slightly darker background to separate from white but still light
                 borderRadius: "4px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                border: "1px solid #bdbdbd",
               }}
             >
               <div>
-                <Typography variant="subtitle1">
+                <Typography variant="subtitle1" sx={{ color: "#212121", fontWeight: 700 }}>
                   <strong>Title:</strong> {videoMetadata.title}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
+                <Typography variant="body2" sx={{ color: "#424242" }}>
                   <strong>Author:</strong> {videoMetadata.author} •{" "}
                   <strong>ID:</strong> {videoMetadata.videoId}
                 </Typography>
@@ -1240,7 +1364,16 @@ const VideoPlayer = () => {
                   startIcon={<CloudUploadIcon />}
                   onClick={() => fileUploadRef.current.click()}
                 >
-                  Import Saved ADs from File
+                  Import Local AD Backup File
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="small"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadBackup}
+                >
+                  Download Local AD Backup File
                 </Button>
 
                 <div style={{ display: "flex", gap: "8px" }}>
@@ -1288,18 +1421,9 @@ const VideoPlayer = () => {
                     marginBottom: "15px",
                   }}
                 >
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" gutterBottom style={{ color: "#212121" }}>
                     Add Description
                   </Typography>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    size="small"
-                    onClick={testSpeech}
-                    disabled={!synth}
-                  >
-                    Test TTS Setting
-                  </Button>
                 </div>
 
                 <div
@@ -1327,15 +1451,45 @@ const VideoPlayer = () => {
                 </div>
 
                 <FormControl fullWidth style={{ marginBottom: "15px" }}>
-                  <InputLabel>Action Mode</InputLabel>
+                  <InputLabel id="action-mode-label">Action Mode</InputLabel>
                   <Select
+                    labelId="action-mode-label"
+                    label="Action Mode"
                     value={newAdMode}
                     onChange={(e) => setNewAdMode(e.target.value)}
                   >
                     <MenuItem value="pause">Pause Video</MenuItem>
                     <MenuItem value="duck">Duck Audio (50%)</MenuItem>
+                    <MenuItem value="fluid">Fluid AD (Variable Speed)</MenuItem>
                   </Select>
                 </FormControl>
+
+                {newAdMode === "fluid" && (
+                  <div style={{ marginBottom: "15px" }}>
+                    <Typography variant="caption" style={{ color: "#424242", fontWeight: 500, display: 'block' }}>
+                      Video Playback Rate during AD: {newAdVideoRate}x
+                    </Typography>
+                    <Slider
+                      value={newAdVideoRate}
+                      min={0.25}
+                      max={2}
+                      step={0.05}
+                      onChange={(e, val) => setNewAdVideoRate(val)}
+                      valueLabelDisplay="auto"
+                    />
+                    <Typography variant="caption" style={{ color: "#424242", fontWeight: 500, display: 'block', marginTop: '10px' }}>
+                      Video Volume during AD: {newAdVideoVolume}% {newAdVideoVolume === 0 && "(Muted)"}
+                    </Typography>
+                    <Slider
+                      value={newAdVideoVolume}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onChange={(e, val) => setNewAdVideoVolume(val)}
+                      valueLabelDisplay="auto"
+                    />
+                  </div>
+                )}
 
                 <TextField
                   label="Description Text"
@@ -1345,8 +1499,31 @@ const VideoPlayer = () => {
                   fullWidth
                   value={newAdText}
                   onChange={(e) => setNewAdText(e.target.value)}
-                  style={{ marginBottom: "15px" }}
+                  style={{ marginBottom: "5px" }}
                 />
+                <Typography variant="caption" style={{ color: "#757575", display: 'block', marginBottom: '15px' }}>
+                  Estimated Duration: {estimateDuration(newAdText, newAdRate || speechRate).toFixed(1)}s
+                </Typography>
+
+                <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddAd}
+                    disabled={!newAdText || !videoMetadata}
+                    fullWidth
+                    sx={{ 
+                      color: '#fff !important', 
+                      fontWeight: 700, 
+                      bgcolor: '#1565c0 !important',
+                      '&.Mui-disabled': {
+                        bgcolor: '#e0e0e0 !important',
+                        color: '#757575 !important'
+                      }
+                    }}
+                  >
+                    Add AD to Timeline
+                  </Button>
+                </div>
 
                 {/* Per AD TTS Controls inside Authoring Block */}
                 <div
@@ -1357,13 +1534,40 @@ const VideoPlayer = () => {
                     marginBottom: "15px",
                   }}
                 >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Description Voice Settings
-                  </Typography>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <Typography variant="subtitle2" style={{ color: "#424242", fontWeight: 700 }}>
+                      Description Voice Settings
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      size="small"
+                      onClick={testSpeech}
+                      disabled={!mounted || !synth}
+                      sx={{ color: '#c2185b', borderColor: '#c2185b', fontWeight: 600, py: 0 }}
+                    >
+                      Test TTS
+                    </Button>
+                  </div>
                   <FormControl fullWidth style={{ marginBottom: "15px" }}>
+                    <InputLabel id="voice-select-label">Voice</InputLabel>
                     <Select
+                      labelId="voice-select-label"
+                      label="Voice"
                       value={newAdVoice || selectedVoice}
-                      onChange={(e) => setNewAdVoice(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewAdVoice(val);
+                        setSelectedVoice(val);
+                        localStorage.setItem("selectedVoice", val);
+                      }}
                     >
                       {voices.map((voice, idx) => (
                         <MenuItem key={idx} value={voice.name}>
@@ -1373,41 +1577,49 @@ const VideoPlayer = () => {
                     </Select>
                   </FormControl>
 
-                  <Typography variant="caption">
+                  <Typography variant="caption" style={{ color: "#424242", fontWeight: 500 }}>
                     Speech Rate: {newAdRate || speechRate}
                   </Typography>
                   <Slider
                     value={newAdRate || speechRate}
                     min={0.5}
+                    max={4}
+                    step={0.1}
+                    onChange={(e, val) => {
+                      setNewAdRate(val);
+                      setSpeechRate(val);
+                      localStorage.setItem("speechRate", val);
+                    }}
+                  />
+
+                  <Typography variant="caption" style={{ color: "#424242", fontWeight: 500, display: 'block', marginTop: '10px' }}>
+                    Speech Pitch: {newAdPitch || speechPitch}
+                  </Typography>
+                  <Slider
+                    value={newAdPitch || speechPitch}
+                    min={0.5}
                     max={2}
                     step={0.1}
-                    onChange={(e, val) => setNewAdRate(val)}
+                    onChange={(e, val) => {
+                      setNewAdPitch(val);
+                      setSpeechPitch(val);
+                      localStorage.setItem("speechPitch", val);
+                    }}
                   />
                 </div>
 
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleAddAd}
-                    disabled={!newAdText || !videoMetadata}
-                    fullWidth
-                  >
-                    Add AD to Timeline
-                  </Button>
-                </div>
               </Paper>
             )}
 
             {appMode === "diy_editor" && (
               <Paper style={{ padding: "20px" }}>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom style={{ color: "#212121" }}>
                   Add DIY Step
                 </Typography>
                 <Typography
                   variant="body2"
                   color="textSecondary"
-                  style={{ marginBottom: "15px" }}
+                  style={{ marginBottom: "15px", color: "#424242" }}
                 >
                   Define a section of the video to loop during hands-free DIY
                   playback.
@@ -1482,21 +1694,33 @@ const VideoPlayer = () => {
                     marginBottom: "15px",
                   }}
                 >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Voice Settings
+                  <Typography variant="caption" style={{ color: "#424242", fontWeight: 500 }}>
+                    Speech Rate: {speechRate}
                   </Typography>
-                  <FormControl fullWidth style={{ marginBottom: "10px" }}>
-                    <Select
-                      value={newAdVoice || selectedVoice}
-                      onChange={(e) => setNewAdVoice(e.target.value)}
-                    >
-                      {voices.map((voice, idx) => (
-                        <MenuItem key={idx} value={voice.name}>
-                          {voice.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <Slider
+                    value={speechRate}
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    onChange={(e, val) => {
+                      setSpeechRate(val);
+                      localStorage.setItem("speechRate", val);
+                    }}
+                  />
+
+                  <Typography variant="caption" style={{ color: "#424242", fontWeight: 500, display: 'block', marginTop: '10px' }}>
+                    Speech Pitch: {speechPitch}
+                  </Typography>
+                  <Slider
+                    value={speechPitch}
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    onChange={(e, val) => {
+                      setSpeechPitch(val);
+                      localStorage.setItem("speechPitch", val);
+                    }}
+                  />
                 </div>
 
                 <Button
@@ -1524,6 +1748,9 @@ const VideoPlayer = () => {
           formatTime={formatTime}
           onPlayAd={playAd}
           onDeleteAd={handleDeleteAd}
+          onUpdateAd={handleUpdateAd}
+          voices={voices}
+          estimateDuration={estimateDuration}
         />
       )}
 

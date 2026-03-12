@@ -137,7 +137,9 @@ const TbmaEditor = ({
   const addActionBlock = (index) => {
     const newBlocks = [...tbmaBlocks];
     // Insert an action block immediately after the selected index
-    const insertTime = tbmaBlocks[index].time; // Adopt the time of the previous dialog
+    let insertTime = tbmaBlocks[index].time; // Adopt the time of the previous dialog
+    if (insertTime < 0.5) insertTime = 0.5;
+
     newBlocks.splice(index + 1, 0, {
       id: crypto.randomUUID(),
       type: "action",
@@ -261,13 +263,12 @@ const TbmaEditor = ({
 
   return (
     <div style={{ marginTop: "20px" }}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" gutterBottom style={{ color: "#212121", fontWeight: 700 }}>
         TBMA Script Editor
       </Typography>
       <Typography
         variant="body2"
-        color="textSecondary"
-        style={{ marginBottom: "20px" }}
+        style={{ marginBottom: "20px", color: "#424242" }}
       >
         Create a Time-Based Media Alternative by importing YouTube&apos;s Closed
         Captions as dialog, then injecting descriptive &ldquo;Action&rdquo;
@@ -282,7 +283,7 @@ const TbmaEditor = ({
             backgroundColor: "#f9f9f9",
           }}
         >
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" gutterBottom style={{ color: "#212121" }}>
             1. Import Dialog (Closed Captions)
           </Typography>
           <Button
@@ -307,7 +308,7 @@ const TbmaEditor = ({
 
           <Divider style={{ margin: "15px 0" }} />
 
-          <Typography variant="subtitle2" gutterBottom>
+          <Typography variant="subtitle2" gutterBottom style={{ color: "#424242", fontWeight: 700 }}>
             Fallback: Manual `.vtt` Paste
           </Typography>
           <TextField
@@ -340,7 +341,7 @@ const TbmaEditor = ({
               marginBottom: "15px",
             }}
           >
-            <Typography variant="h6" style={{ flexGrow: 1 }}>
+            <Typography variant="h6" style={{ flexGrow: 1, color: "#212121" }}>
               Script Timeline
             </Typography>
             <div style={{ display: "flex", gap: "10px" }}>
@@ -412,7 +413,7 @@ const TbmaEditor = ({
                     <Typography
                       variant="caption"
                       display="block"
-                      color="textSecondary"
+                      style={{ color: "#424242", fontWeight: 500 }}
                     >
                       {block.type.toUpperCase()}
                     </Typography>
@@ -467,19 +468,61 @@ const TbmaEditor = ({
                               ))}
                             </Select>
                           </FormControl>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() =>
-                              updateActionBlock(
-                                block.id,
-                                "mode",
-                                block.mode === "pause" ? "duck" : "pause",
-                              )
-                            }
-                          >
-                            {block.mode}
-                          </Button>
+                          <FormControl size="small" style={{ minWidth: "100px" }}>
+                            <Select
+                              value={block.mode || "pause"}
+                              onChange={(e) =>
+                                updateActionBlock(block.id, "mode", e.target.value)
+                              }
+                              inputProps={{ "aria-label": "Action Mode" }}
+                            >
+                              <MenuItem value="pause">Pause</MenuItem>
+                              <MenuItem value="duck">Duck</MenuItem>
+                              <MenuItem value="fluid">Fluid</MenuItem>
+                            </Select>
+                          </FormControl>
+
+                          <div style={{ display: "flex", flexDirection: "column", width: "120px" }}>
+                            <Typography variant="caption" style={{ color: "#424242" }}>Speech Rate: {block.rate || 1}x</Typography>
+                            <input 
+                              type="range" 
+                              min={0.5} 
+                              max={4} 
+                              step={0.1}
+                              value={block.rate || 1}
+                              onChange={(e) => updateActionBlock(block.id, "rate", parseFloat(e.target.value))}
+                              style={{ width: "100%" }}
+                            />
+                          </div>
+
+                          {block.mode === "fluid" && (
+                            <>
+                              <div style={{ display: "flex", flexDirection: "column", width: "120px" }}>
+                                <Typography variant="caption" style={{ color: "#424242" }}>Video Rate: {block.videoRate || 1}x</Typography>
+                                <input 
+                                  type="range" 
+                                  min={0.25} 
+                                  max={2} 
+                                  step={0.05}
+                                  value={block.videoRate || 1}
+                                  onChange={(e) => updateActionBlock(block.id, "videoRate", parseFloat(e.target.value))}
+                                  style={{ width: "100%" }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", width: "120px" }}>
+                                <Typography variant="caption" style={{ color: "#424242" }}>Vid Vol: {block.videoVolume !== undefined ? block.videoVolume : 50}%</Typography>
+                                <input 
+                                  type="range" 
+                                  min={0} 
+                                  max={100} 
+                                  step={1}
+                                  value={block.videoVolume !== undefined ? block.videoVolume : 50}
+                                  onChange={(e) => updateActionBlock(block.id, "videoVolume", parseInt(e.target.value))}
+                                  style={{ width: "100%" }}
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
