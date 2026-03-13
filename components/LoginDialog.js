@@ -9,7 +9,10 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Divider,
 } from "@mui/material";
+import GoogleIcon from "@mui/icons-material/Google";
+import GitHubIcon from "@mui/icons-material/GitHub";
 import { supabase } from "../lib/supabase";
 
 const LoginDialog = ({ open, onClose }) => {
@@ -47,6 +50,24 @@ const LoginDialog = ({ open, onClose }) => {
     }
   };
 
+  const handleOAuthLogin = async (provider) => {
+    setLoading(true);
+    setError("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        },
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error(`${provider} login error:`, err);
+      setError(err.message || `An error occurred during ${provider} login.`);
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Sign In to EquiViewer</DialogTitle>
@@ -57,43 +78,66 @@ const LoginDialog = ({ open, onClose }) => {
             DIY steps, and TBMA scripts under your profile.
           </Typography>
 
-          <TextField
-            fullWidth
-            type="email"
-            label="Email Address"
-            variant="outlined"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading || Boolean(message)}
-            sx={{ mb: 2 }}
-          />
+          <DialogActions sx={{ px: 0, pb: 0, flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<GitHubIcon />}
+                onClick={() => handleOAuthLogin('github')}
+                disabled={loading}
+              >
+                GitHub
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<GoogleIcon />}
+                onClick={() => handleOAuthLogin('google')}
+                disabled={loading}
+              >
+                Google
+              </Button>
+            </Box>
 
-          {message && (
-            <Typography color="success.main" variant="body2" sx={{ mb: 2 }}>
-              {message}
-            </Typography>
-          )}
+            <Divider sx={{ width: '100%', my: 1 }}>OR</Divider>
 
-          {error && (
-            <Typography color="error.main" variant="body2" sx={{ mb: 2 }}>
-              {error}
-            </Typography>
-          )}
+            <Box sx={{ width: '100%' }}>
+              <TextField
+                fullWidth
+                type="email"
+                label="Email Address"
+                variant="outlined"
+                size="small"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading || Boolean(message)}
+                sx={{ mb: 1 }}
+              />
+              <Button
+                fullWidth
+                type="submit"
+                variant="contained"
+                disabled={loading || !email || Boolean(message)}
+                startIcon={loading ? <CircularProgress size={20} /> : null}
+              >
+                Send Magic Link
+              </Button>
+            </Box>
 
-          <DialogActions sx={{ px: 0, pb: 0 }}>
-            <Button onClick={onClose} disabled={loading}>
+            <Button onClick={onClose} disabled={loading} sx={{ mt: 1 }}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading || !email || Boolean(message)}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
-            >
-              Send Magic Link
-            </Button>
           </DialogActions>
+
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary">
+              By signing in, you agree to our{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>Terms of Service</a> and{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>Privacy Policy</a>.
+            </Typography>
+          </Box>
         </Box>
       </DialogContent>
     </Dialog>

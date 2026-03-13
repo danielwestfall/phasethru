@@ -90,30 +90,37 @@ ALTER TABLE diy_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tbma_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 
--- Videos: anyone can read and insert
+-- Videos: anyone can read, only auth users can insert/update metadata
 CREATE POLICY "videos_select" ON videos FOR SELECT USING (true);
-CREATE POLICY "videos_insert" ON videos FOR INSERT WITH CHECK (true);
+CREATE POLICY "videos_insert" ON videos FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "videos_update" ON videos FOR UPDATE USING (auth.uid() IS NOT NULL);
 
--- Audio descriptions: anyone can read/insert, only author can delete
+-- Audio descriptions: anyone can read, only auth users can insert, only author can update/delete
 CREATE POLICY "ads_select" ON audio_descriptions FOR SELECT USING (true);
-CREATE POLICY "ads_insert" ON audio_descriptions FOR INSERT WITH CHECK (true);
+CREATE POLICY "ads_insert" ON audio_descriptions FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "ads_update" ON audio_descriptions FOR UPDATE 
+  USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR user_id IS NULL));
 CREATE POLICY "ads_delete" ON audio_descriptions FOR DELETE
   USING (auth.uid() IS NOT NULL AND user_id = auth.uid());
 
--- DIY steps: anyone can read/insert, only author can delete
+-- DIY steps: anyone can read, only auth users can insert, only author can update/delete
 CREATE POLICY "diy_select" ON diy_steps FOR SELECT USING (true);
-CREATE POLICY "diy_insert" ON diy_steps FOR INSERT WITH CHECK (true);
+CREATE POLICY "diy_insert" ON diy_steps FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "diy_update" ON diy_steps FOR UPDATE
+  USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR user_id IS NULL));
 CREATE POLICY "diy_delete" ON diy_steps FOR DELETE
   USING (auth.uid() IS NOT NULL AND user_id = auth.uid());
 
--- TBMA blocks: anyone can read/insert, only author can delete
+-- TBMA blocks: anyone can read, only auth users can insert, only author can update/delete
 CREATE POLICY "tbma_select" ON tbma_blocks FOR SELECT USING (true);
-CREATE POLICY "tbma_insert" ON tbma_blocks FOR INSERT WITH CHECK (true);
+CREATE POLICY "tbma_insert" ON tbma_blocks FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "tbma_update" ON tbma_blocks FOR UPDATE
+  USING (auth.uid() IS NOT NULL AND (user_id = auth.uid() OR user_id IS NULL));
 CREATE POLICY "tbma_delete" ON tbma_blocks FOR DELETE
   USING (auth.uid() IS NOT NULL AND user_id = auth.uid());
 
--- Votes: anyone can read/insert, only voter can update their own vote
+-- Votes: anyone can read, only auth users can insert, only voter can update their own vote
 CREATE POLICY "votes_select" ON votes FOR SELECT USING (true);
-CREATE POLICY "votes_insert" ON votes FOR INSERT WITH CHECK (true);
+CREATE POLICY "votes_insert" ON votes FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "votes_update" ON votes FOR UPDATE
   USING (auth.uid() IS NOT NULL AND user_id = auth.uid());

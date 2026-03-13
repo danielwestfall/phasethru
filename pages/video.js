@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import YouTube from "react-youtube";
 import { supabase, getSessionId } from "../lib/supabase";
@@ -1849,6 +1850,33 @@ const VideoPlayer = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Box
+        component="footer"
+        sx={{
+          py: 3,
+          px: 2,
+          mt: 4,
+          textAlign: "center",
+          borderTop: "1px solid #e0e0e0",
+          backgroundColor: "#fafafa"
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          © {new Date().getFullYear()} EquiViewer — Accessible Media for Everyone
+        </Typography>
+        <Box sx={{ mt: 1, display: "flex", justifyContent: "center", gap: 2 }}>
+          <Link href="/privacy" passHref legacyBehavior>
+            <a style={{ color: "rgba(0, 0, 0, 0.6)", textDecoration: "none", fontSize: '0.75rem' }}>
+              Privacy Policy
+            </a>
+          </Link>
+          <Link href="/terms" passHref legacyBehavior>
+            <a style={{ color: "rgba(0, 0, 0, 0.6)", textDecoration: "none", fontSize: '0.75rem' }}>
+              Terms of Service
+            </a>
+          </Link>
+        </Box>
+      </Box>
     </div>
   );
 };

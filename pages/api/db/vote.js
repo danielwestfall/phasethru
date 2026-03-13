@@ -1,4 +1,8 @@
-import { supabase, isSupabaseConfigured } from "../../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+import { isSupabaseConfigured } from "../../../lib/supabase";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const config = {
   api: { bodyParser: { sizeLimit: "10kb" } },
@@ -21,10 +25,16 @@ export default async function handler(req, res) {
 
   let userId = null;
   const token = req.headers.authorization?.split(" ")[1];
+
+  // Create a request-specific supabase client
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  });
+
   if (token) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser(token);
+    const { data: { user } } = await supabase.auth.getUser();
     if (user) userId = user.id;
   }
 
